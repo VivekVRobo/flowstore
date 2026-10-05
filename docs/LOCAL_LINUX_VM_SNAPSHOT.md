@@ -43,11 +43,11 @@ Create a clean Linux runner B with `flow` and QEMU installed. It does not need r
 
 ```sh
 flow restore /srv/restore \
-  -secret 'FLOW-…' \
+  -secret-file /run/credentials/flowstore-recovery \
   -peer /ip4/10.0.0.10/tcp/41001/p2p/<bootstrap-peer-id>
 ```
 
-Restore uses DHT provider discovery for catalog and object shards, then falls back to the specified bootstrap peers. The secret alone does not include a bootstrap address. The storage swarm and its DHT must still be reachable.
+On Linux, the secret file must be readable only by its owner (mode `0600` or stricter). `-secret-file` keeps the recovery code out of the process argument list. Keep this file outside the restored disk and protect it as recovery metadata. The legacy `-secret` option remains available, but places the code in the process arguments. Restore uses DHT provider discovery for catalog and object shards, then falls back to the specified bootstrap peers. The secret alone does not include a bootstrap address. The storage swarm and its DHT must still be reachable.
 
 Verify the restored image against the descriptor and QEMU's image checker before booting:
 

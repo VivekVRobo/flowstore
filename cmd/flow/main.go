@@ -508,7 +508,7 @@ Usage:
   flow ingest <file> [-peer <addr>]...         Stream, encrypt, and distribute file with paged metadata
   flow audit <manifest> [-peer <addr>]...      Challenge swarm peers with zero-knowledge possession proofs
   flow recover <manifest> <out> [-peer <bootstrap-addr>] Reconstruct via DHT-discovered swarm shards
-  flow restore <out-dir> -secret <FLOW-XXXX>   Rebuild catalog and restore all files from root recovery secret
+  flow restore <out-dir> -secret-file <path>   Rebuild catalog and restore files using a protected secret file
   flow delete <manifest> [-peer <addr>]...     Explicitly reclaim leased shards for one object
   flow repair-status <peer> [-reannounce]      Query peer storage health and DHT re-announcement
   flow snapshot capture <disk> -output <file>  Capture and commit a stopped Linux VM disk through FlowStore
@@ -1076,13 +1076,14 @@ func cmdRecover(args []string) error {
 func cmdRestore(args []string) {
 	fs := flag.NewFlagSet("restore", flag.ExitOnError)
 	secretFlag := fs.String("secret", "", "Master recovery secret (FLOW-XXXX-...)")
+	secretFileFlag := fs.String("secret-file", "", "Read the master recovery secret from a protected file")
 	var peerFlags stringSlice
 	fs.Var(&peerFlags, "peer", "Swarm peer multiaddress (can be repeated)")
 	peersFlag := fs.String("peers", "", "Comma-separated list of peer multiaddresses")
 	fs.Parse(normalizeArgs(args, nil))
 
 	if fs.NArg() < 1 {
-		fmt.Println("Usage: flow restore <output_dir> [-secret <FLOW-XXXX-...>] -peer <addr>...")
+		fmt.Println("Usage: flow restore <output_dir> [-secret <FLOW-XXXX-...> | -secret-file <path>] -peer <addr>...")
 		os.Exit(1)
 	}
 
@@ -1093,7 +1094,31 @@ func cmdRestore(args []string) {
 	}
 
 	var code string
-	if *secretFlag != "" {
+	if *secretFlag != "" && *secretFileFlag != "" {
+		fmt.Fprintln(os.Stderr, "Error: use either -secret or -secret-file, not both.")
+		os.Exit(1)
+	}
+	if *secretFileFlag != "" {
+		secretInfo, err := os.Stat(*secretFileFlag)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to access recovery secret file: %v\n", err)
+			os.Exit(1)
+		}
+		if runtime.GOOS != "windows" && secretInfo.Mode().Perm()&0077 != 0 {
+			fmt.Fprintln(os.Stderr, "Error: recovery secret file must not be accessible by group or other users (use mode 0600 or stricter).")
+			os.Exit(1)
+		}
+		secretBytes, err := os.ReadFile(*secretFileFlag)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to read recovery secret file: %v\n", err)
+			os.Exit(1)
+		}
+		code = strings.TrimSpace(string(secretBytes))
+		if code == "" {
+			fmt.Fprintln(os.Stderr, "Error: recovery secret file is empty.")
+			os.Exit(1)
+		}
+	} else if *secretFlag != "" {
 		code = *secretFlag
 	} else {
 		_, c, err := loadKeyring()
