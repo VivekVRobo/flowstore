@@ -1,0 +1,113 @@
+name: Windows build artifacts
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-windows-x64:
+    runs-on: windows-2025
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Resolve embedded file version
+        shell: pwsh
+        run: |
+          $version = '0.0.0.0'
+          if ($env:GITHUB_REF_TYPE -eq 'tag') {
+            $match = [regex]::Match($env:GITHUB_REF_NAME, '^v(?<major>\d+)\.(?<minor>\d+)\.(?<patch>\d+)(?:[-+].*)?$')
+            if (-not $match.Success) {
+              throw "Release tag must start with vMAJOR.MINOR.PATCH; got '$env:GITHUB_REF_NAME'."
+            }
+            $version = "$($match.Groups['major'].Value).$($match.Groups['minor'].Value).$($match.Groups['patch'].Value).0"
+          }
+          "FLOWSTORE_FILE_VERSION=$version" >> $env:GITHUB_ENV
+
+      - name: Generate Windows version resources and build
+        shell: pwsh
+        run: |
+          $version = $env:FLOWSTORE_FILE_VERSION
+          $parts = $version.Split('.') | ForEach-Object { [int]$_ }
+          if ($parts.Count -ne 4) { throw "Expected a four-part file version, got '$version'." }
+
+          $template = Get-Content 'build/windows-versioninfo.json' -Raw | ConvertFrom-Json
+          $template.FixedFileInfo.FileVersion.Major = $parts[0]
+          $template.FixedFileInfo.FileVersion.Minor = $parts[1]
+          $template.FixedFileInfo.FileVersion.Patch = $parts[2]
+          $template.FixedFileInfo.FileVersion.Build = $parts[3]
+          $template.FixedFileInfo.ProductVersion.Major = $parts[0]
+          $template.FixedFileInfo.ProductVersion.Minor = $parts[1]
+          $template.FixedFileInfo.ProductVersion.Patch = $parts[2]
+          $template.FixedFileInfo.ProductVersion.Build = $parts[3]
+          $template.StringFileInfo.FileVersion = $version
+          $template.StringFileInfo.ProductVersion = $version
+
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          $encoding = [System.Text.UTF8Encoding]::new($false)
+          $programs = @(
+            @{ directory = 'cmd/flow'; filename = 'flow.exe'; description = 'FlowStore command-line client' },
+            @{ directory = 'cmd/flownode'; filename = 'flownode.exe'; description = 'FlowStore storage peer' }
+          )
+          foreach ($program in $programs) {
+            $template.StringFileInfo.FileDescription = $program.description
+            $template.StringFileInfo.InternalName = $program.filename
+            $template.StringFileInfo.OriginalFilename = $program.filename
+            $versionInfoPath = Join-Path $program.directory 'versioninfo.json'
+            $resourcePath = Join-Path $program.directory 'resource_windows_amd64.syso'
+            [System.IO.File]::WriteAllText($versionInfoPath, ($template | ConvertTo-Json -Depth 8), $encoding)
+            Push-Location $program.directory
+            try {
+              go run github.com/josephspurrier/goversioninfo/cmd/goversioninfo@v1.7.0 -64 -o resource_windows_amd64.syso
+            } finally {
+              Pop-Location
+            }
+          }
+
+          try {
+            $env:CGO_ENABLED = '0'
+            $env:GOOS = 'windows'
+            $env:GOARCH = 'amd64'
+            go build -trimpath -buildvcs=false -o dist/flow.exe ./cmd/flow
+            if ($LASTEXITCODE -ne 0) { throw 'Building flow.exe failed.' }
+            go build -trimpath -buildvcs=false -o dist/flownode.exe ./cmd/flownode
+            if ($LASTEXITCODE -ne 0) { throw 'Building flownode.exe failed.' }
+          } finally {
+            foreach ($program in $programs) {
+              Remove-Item (Join-Path $program.directory 'versioninfo.json') -Force -ErrorAction SilentlyContinue
+              Remove-Item (Join-Path $program.directory 'resource_windows_amd64.syso') -Force -ErrorAction SilentlyContinue
+            }
+          }
+
+          $hashes = Get-ChildItem dist -Filter '*.exe' | ForEach-Object {
+            $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            "$hash  $($_.Name)"
+          }
+          [System.IO.File]::WriteAllLines((Join-Path (Get-Location) 'dist/SHA256SUMS.txt'), $hashes, $encoding)
+          @(
+            "Source commit: $env:GITHUB_SHA"
+            "Source ref: $env:GITHUB_REF"
+            "Embedded product version: $version"
+            'Status: unsigned experimental build; no SignPath certificate is applied.'
+          ) | Set-Content -Path dist/build-info.txt -Encoding utf8NoBOM
+
+      - name: Upload unsigned build artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: flowstore-windows-x64-unsigned
+          path: dist/
+          if-no-files-found: error
+          retention-days: 14

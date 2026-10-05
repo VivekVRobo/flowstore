@@ -17,6 +17,10 @@ go build -o flownode.exe ./cmd/flownode
 
 These commands build the executables only. They do not configure peers, storage remotes, recovery secrets, or a production deployment.
 
+## Windows build artifacts
+
+The `Windows build artifacts` GitHub Actions workflow builds unsigned Windows x64 `flow.exe` and `flownode.exe` files from the checked-out source. It uploads them as a short-lived workflow artifact with a SHA-256 checksum and build provenance text. There is not yet a public binary release or a SignPath-signed download. FlowStore is experimental; do not entrust it with the only copy of important data.
+
 ## Project documents
 
 - [Current FlowStore baseline](docs/FLOWSTORE_BASELINE.md)
