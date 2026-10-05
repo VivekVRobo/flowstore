@@ -1,0 +1,23 @@
+[Unit]
+Description=FlowStore storage peer
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=flowstore
+Group=flowstore
+Environment=HOME=/var/lib/flowstore
+UMask=0077
+ExecStart=/usr/local/bin/flownode --dir=/var/lib/flowstore/data --identity-key=/var/lib/flowstore/node.key --port=41001 --quota-gb=10 --dht=true --upnp=false --failure-domain=oci-free-vm
+Restart=on-failure
+RestartSec=5s
+TimeoutStopSec=30s
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/flowstore
+
+[Install]
+WantedBy=multi-user.target

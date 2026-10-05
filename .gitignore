@@ -1,0 +1,46 @@
+# Go build artifacts
+*.exe
+*.test
+/bin/
+/coverage.out
+*.log
+
+# Local FlowStore node state and generated shards
+/flownode-data/
+/shards/
+*.shard
+*.db
+*.db-shm
+*.db-wal
+/node.key
+
+# Local manifests contain paths and per-chunk encryption keys
+*.flowmanifest.*
+
+# Credentials and local provider configuration
+/config/rclone.conf*
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
+*.pfx
+*.key
+
+# Historical workspace experiments are not part of the FlowStore V2 release
+/cloud_studio/
+
+# Local jobs, VM images, and scratch data
+/config/pending_render.json
+/cloud_studio/render_farm/active_farm_job.json
+*.qcow2
+*.vhd
+*.vhdx
+*.raw
+*.img
+*.flowmeta.json
+*.partial
+
+# Windows metadata
+Thumbs.db
+desktop.ini
