@@ -17,11 +17,11 @@ go build -o flownode.exe ./cmd/flownode
 
 These commands build the executables only. They do not configure peers, storage remotes, recovery secrets, or a production deployment.
 
-## Windows build artifacts
+## Experimental binary prerelease
 
-The `Windows build artifacts` GitHub Actions workflow builds unsigned Windows x64 `flow.exe` and `flownode.exe` files from the checked-out source. It uploads them as a short-lived workflow artifact with a SHA-256 checksum and build provenance text. There is not yet a public binary release or a SignPath-signed download. FlowStore is experimental; do not entrust it with the only copy of important data.
+[FlowStore v0.5.0-alpha.1](https://github.com/VivekVRobo/flowstore/releases/tag/v0.5.0-alpha.1) is a public, unsigned experimental prerelease for Windows x64 and Linux x64. Its release page includes the binaries, SHA-256 checksums, and build provenance for source commit `336c639f825805c1d2de3b252c12a198cc21b29a`. SignPath Foundation has not approved or signed FlowStore; no binary in this prerelease has a SignPath signature. See the [code-signing policy](docs/CODE_SIGNING_POLICY.md).
 
-The same workflow also builds unsigned Linux x64 `flow` and `flownode` binaries on a GitHub-hosted Linux runner. These artifacts support the Linux snapshot proof; they do not make the Windows binaries trusted or signed.
+The `Windows build artifacts` GitHub Actions workflow builds unsigned Windows x64 `flow.exe` and `flownode.exe` files and unsigned Linux x64 `flow` and `flownode` files from the checked-out source. These experimental binaries are not production-ready. Do not entrust FlowStore with the only copy of important data. The Z:-backed VM snapshot restore path after peer restart and fresh-client recovery remains unqualified; a same-laptop test would not demonstrate independent-host availability or 24/7 service.
 
 ## Project documents
 
