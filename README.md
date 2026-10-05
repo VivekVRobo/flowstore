@@ -29,6 +29,8 @@ The same workflow also builds unsigned Linux x64 `flow` and `flownode` binaries 
 - [Sovereign Computer V2 engineering sequence](docs/SOVEREIGN_COMPUTER_V2_PLAN.md)
 - [Local Linux VM snapshot acceptance runbook](docs/LOCAL_LINUX_VM_SNAPSHOT.md)
 - [Oracle Always Free VM pilot](docs/OCI_FREE_VM_PILOT.md)
+- [Privacy policy](docs/PRIVACY_POLICY.md)
+- [Code signing policy](docs/CODE_SIGNING_POLICY.md)
 - [Swarm protocol draft](protocol/FLOWSTORE_PROTOCOL.md)
 
 The historical `cloud_studio` experiments are excluded from the FlowStore V2 source release. They remain in the local workspace and may contain outdated setup material and personal machine paths.
