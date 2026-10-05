@@ -32,6 +32,8 @@ func main() {
 	enableRelayService := flag.Bool("relay-service", false, "Act as a public Circuit Relay v2 for other peers")
 	gcInterval := flag.Duration("gc-interval", network.DefaultGCInterval, "Lease expiry + reconciliation interval (0 disables background GC)")
 	failureDomain := flag.String("failure-domain", "default", "Failure-domain tag (host/rack/region) advertised for placement diversity")
+	enableAutoNAT := flag.Bool("autonat", true, "Enable AutoNAT and hole-punching support")
+	enableRelayClient := flag.Bool("relay-client", true, "Enable circuit-relay client support")
 	flag.Parse()
 	if *quotaGB < 0 || *quotaGB > math.MaxInt64/(1024*1024*1024) {
 		fmt.Fprintln(os.Stderr, "Invalid --quota-gb: must be non-negative and fit in bytes")
@@ -104,8 +106,8 @@ func main() {
 		EnableDHT:             *enableDHT,
 		DHTServerMode:         *enableDHT,
 		EnableUPnP:            *enableUPnP,
-		EnableAutoNAT:         true,
-		EnableRelay:           true,
+		EnableAutoNAT:         *enableAutoNAT,
+		EnableRelay:           *enableRelayClient,
 		RelayService:          *enableRelayService,
 		BootstrapPeers:        bootstrapPeers,
 		GCInterval:            *gcInterval,

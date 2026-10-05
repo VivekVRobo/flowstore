@@ -12,6 +12,8 @@ For an isolated Flow CLI profile, set `FLOWSTORE_CONFIG_DIR` on `flow init`, cap
 - Make each peer's quota large enough for its share of the encoded snapshot plus headroom. With 6+4 coding, total stored shard bytes are about 1.67 times the logical image size before headers and metadata.
 - Initialize the FlowStore identity on runner A with `flow init` and retain the recovery secret outside the VM being captured.
 
+For an intentionally local, same-laptop qualification, start every peer with `--upnp=false --autonat=false --relay-client=false --relay-service=false` while leaving DHT enabled. This avoids unnecessary router mapping and public reachability services during the local test; it does not establish cross-host availability.
+
 ## Capture and commit on runner A
 
 With the Linux guest shut down and its qcow2 disk closed, capture and ingest the disk and descriptor:
