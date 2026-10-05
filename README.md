@@ -21,6 +21,8 @@ These commands build the executables only. They do not configure peers, storage 
 
 The `Windows build artifacts` GitHub Actions workflow builds unsigned Windows x64 `flow.exe` and `flownode.exe` files from the checked-out source. It uploads them as a short-lived workflow artifact with a SHA-256 checksum and build provenance text. There is not yet a public binary release or a SignPath-signed download. FlowStore is experimental; do not entrust it with the only copy of important data.
 
+The same workflow also builds unsigned Linux x64 `flow` and `flownode` binaries on a GitHub-hosted Linux runner. These artifacts support the Linux snapshot proof; they do not make the Windows binaries trusted or signed.
+
 ## Project documents
 
 - [Current FlowStore baseline](docs/FLOWSTORE_BASELINE.md)

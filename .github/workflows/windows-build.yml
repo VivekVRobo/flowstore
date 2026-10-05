@@ -11,6 +11,41 @@ permissions:
   contents: read
 
 jobs:
+  build-linux-x64:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Build Linux x64 binaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -buildvcs=false -o dist/flow ./cmd/flow
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -buildvcs=false -o dist/flownode ./cmd/flownode
+          (cd dist && sha256sum flow flownode > SHA256SUMS.txt)
+          {
+            printf 'Source commit: %s\n' "$GITHUB_SHA"
+            printf 'Source ref: %s\n' "$GITHUB_REF"
+            printf 'Status: unsigned experimental Linux build.\n'
+          } > dist/build-info.txt
+
+      - name: Upload Linux build artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: flowstore-linux-x64
+          path: dist/
+          if-no-files-found: error
+          retention-days: 14
+
   build-windows-x64:
     runs-on: windows-2025
     timeout-minutes: 20
