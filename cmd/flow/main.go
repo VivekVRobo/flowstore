@@ -1170,6 +1170,7 @@ func cmdRestore(args []string) {
 		return cs.FetchShard(fetchCtx, routingID)
 	}
 
+	restoreFailures := 0
 	for path, entry := range cat.Files {
 		targetFile := filepath.Join(outDir, filepath.Base(path))
 		fmt.Printf("\nRestoring %s (%d bytes) -> %s...\n", path, entry.Size, targetFile)
@@ -1177,18 +1178,30 @@ func cmdRestore(args []string) {
 		outF, err := os.Create(targetFile)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Failed creating file %s: %v\n", targetFile, err)
+			restoreFailures++
 			continue
 		}
 
 		if err := reconstructCatalogEntry(outF, entry, kr, getter); err != nil {
-			outF.Close()
+			if closeErr := outF.Close(); closeErr != nil {
+				fmt.Fprintf(os.Stderr, "Failed closing incomplete output %s: %v\n", targetFile, closeErr)
+			}
 			fmt.Fprintf(os.Stderr, "Failed reconstructing %s: %v\n", path, err)
+			restoreFailures++
 			continue
 		}
-		outF.Close()
+		if err := outF.Close(); err != nil {
+			fmt.Fprintf(os.Stderr, "Failed closing restored output %s: %v\n", targetFile, err)
+			restoreFailures++
+			continue
+		}
 		fmt.Printf("  -> SUCCESS: %s restored byte-perfect!\n", targetFile)
 	}
 
+	if restoreFailures > 0 {
+		fmt.Fprintf(os.Stderr, "\nRestore incomplete: %d of %d catalog file(s) failed.\n", restoreFailures, len(cat.Files))
+		os.Exit(1)
+	}
 	fmt.Println("\nSwarm restoration complete! All files verified and restored.")
 }
 
