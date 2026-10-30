@@ -1073,6 +1073,45 @@ func cmdRecover(args []string) error {
 	return nil
 }
 
+// planRestoreTargets preserves the current flat restore layout while rejecting
+// catalog entries that would overwrite one another. The preflight must complete
+// before any restored file is created so map iteration order cannot lose data.
+func planRestoreTargets(outDir string, files map[string]catalog.FileEntry) (map[string]string, error) {
+	targets := make(map[string]string, len(files))
+	owners := make(map[string]string, len(files))
+	for logicalPath := range files {
+		if strings.ContainsRune(logicalPath, '\x00') {
+			return nil, fmt.Errorf("catalog path %q contains a NUL byte", logicalPath)
+		}
+		// Check the original logical path as well as its basename: filepath.Base
+		// may strip a Windows volume prefix before basename validation sees it.
+		if len(logicalPath) >= 2 && ((logicalPath[0] >= 'a' && logicalPath[0] <= 'z') || (logicalPath[0] >= 'A' && logicalPath[0] <= 'Z')) && logicalPath[1] == ':' {
+			return nil, fmt.Errorf("catalog path %q is drive-qualified", logicalPath)
+		}
+		base := filepath.Base(logicalPath)
+		if base == "" || base == "." || base == ".." || filepath.IsAbs(base) || filepath.VolumeName(base) != "" {
+			return nil, fmt.Errorf("catalog path %q does not have a safe output filename", logicalPath)
+		}
+		// Reject Windows drive-qualified names even when planning on Unix, so a
+		// catalog accepted on one platform cannot become an unsafe target on another.
+		if len(base) >= 2 && ((base[0] >= 'a' && base[0] <= 'z') || (base[0] >= 'A' && base[0] <= 'Z')) && base[1] == ':' {
+			return nil, fmt.Errorf("catalog path %q has a drive-qualified output filename", logicalPath)
+		}
+
+		target := filepath.Join(outDir, base)
+		key := filepath.Clean(target)
+		if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
+			key = strings.ToLower(key)
+		}
+		if previous, exists := owners[key]; exists {
+			return nil, fmt.Errorf("catalog paths %q and %q both map to %q; refusing to overwrite data", previous, logicalPath, target)
+		}
+		owners[key] = logicalPath
+		targets[logicalPath] = target
+	}
+	return targets, nil
+}
+
 func cmdRestore(args []string) {
 	fs := flag.NewFlagSet("restore", flag.ExitOnError)
 	secretFlag := fs.String("secret", "", "Master recovery secret (FLOW-XXXX-...)")
@@ -1156,6 +1195,11 @@ func cmdRestore(args []string) {
 		fmt.Fprintf(os.Stderr, "Catalog recovery failed: %v\n", err)
 		os.Exit(1)
 	}
+	targets, err := planRestoreTargets(outDir, cat.Files)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Catalog restore refused: %v\n", err)
+		os.Exit(1)
+	}
 
 	fmt.Println("\n=================================================================")
 	fmt.Println("                 CATALOG RECONSTRUCTION SUCCESS                  ")
@@ -1172,7 +1216,7 @@ func cmdRestore(args []string) {
 
 	restoreFailures := 0
 	for path, entry := range cat.Files {
-		targetFile := filepath.Join(outDir, filepath.Base(path))
+		targetFile := targets[path]
 		fmt.Printf("\nRestoring %s (%d bytes) -> %s...\n", path, entry.Size, targetFile)
 
 		outF, err := os.Create(targetFile)

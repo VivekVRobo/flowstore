@@ -24,6 +24,9 @@ jobs:
           go-version-file: go.mod
           cache: false
 
+      - name: Run Flow CLI regression tests
+        run: go test ./cmd/flow
+
       - name: Build Linux x64 binaries
         shell: bash
         run: |
@@ -58,6 +61,9 @@ jobs:
         with:
           go-version-file: go.mod
           cache: false
+
+      - name: Run Flow CLI regression tests
+        run: go test ./cmd/flow
 
       - name: Resolve embedded file version
         shell: pwsh
