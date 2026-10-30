@@ -1083,6 +1083,11 @@ func planRestoreTargets(outDir string, files map[string]catalog.FileEntry) (map[
 		if strings.ContainsRune(logicalPath, '\x00') {
 			return nil, fmt.Errorf("catalog path %q contains a NUL byte", logicalPath)
 		}
+		// Check the original logical path as well as its basename: filepath.Base
+		// may strip a Windows volume prefix before basename validation sees it.
+		if len(logicalPath) >= 2 && ((logicalPath[0] >= 'a' && logicalPath[0] <= 'z') || (logicalPath[0] >= 'A' && logicalPath[0] <= 'Z')) && logicalPath[1] == ':' {
+			return nil, fmt.Errorf("catalog path %q is drive-qualified", logicalPath)
+		}
 		base := filepath.Base(logicalPath)
 		if base == "" || base == "." || base == ".." || filepath.IsAbs(base) || filepath.VolumeName(base) != "" {
 			return nil, fmt.Errorf("catalog path %q does not have a safe output filename", logicalPath)
