@@ -35,6 +35,10 @@ The `Windows build artifacts` GitHub Actions workflow builds unsigned Windows x6
 
 The historical `cloud_studio` experiments are excluded from the FlowStore V2 source release. They remain in the local workspace and may contain outdated setup material and personal machine paths.
 
+## Catalog restore behavior
+
+`flow restore <out-dir>` currently flattens catalog paths to their file basenames. Before restoring any file, it now checks the complete catalog for unsafe names and basename collisions. If two logical paths would write to the same output file, restore aborts before creating restored files rather than silently overwriting one object. Use separate output directories or recover the individual objects to distinct output paths when names collide.
+
 ## Local data and credentials
 
 Do not commit provider configuration, config backups, manifests, recovery secrets, peer keys, shard data, databases, VM images, or built executables. `config/rclone.conf` contains credential-bearing token fields. The root `.gitignore` excludes this configuration, local data, build outputs, and the historical experiments.
