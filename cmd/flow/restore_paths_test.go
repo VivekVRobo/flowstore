@@ -46,7 +46,7 @@ func TestPlanRestoreTargetsRejectsDuplicateBasenames(t *testing.T) {
 }
 
 func TestPlanRestoreTargetsRejectsUnsafeBasenames(t *testing.T) {
-	for _, logicalPath := range []string{"", ".", "..", "C:"} {
+	for _, logicalPath := range []string{"", ".", "..", "C:", "C:/outside", "C:\\outside"} {
 		t.Run(logicalPath, func(t *testing.T) {
 			_, err := planRestoreTargets(t.TempDir(), map[string]catalog.FileEntry{logicalPath: {}})
 			if err == nil {
